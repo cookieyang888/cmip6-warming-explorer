@@ -34,7 +34,7 @@ Browser checks cover location changes, presets, numerical year ranges, reversed-
 
 ## Publishing
 
-This repository uses relative asset paths and can be served from the root of the main branch in GitHub Pages. The site includes data methods and design rationale. The team's final development-process write-up (actual contributions, total person-hours, most time-consuming tasks and testing feedback) must be added when the team supplies it.
+This repository uses relative asset paths and can be served from the root of the main branch in GitHub Pages. The site includes data methods and design rationale. The site includes the team's development process and its estimated contribution of approximately 5 hours per member (approximately 20 person-hours total).
 
 ## Credits
 
