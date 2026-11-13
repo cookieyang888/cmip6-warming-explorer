@@ -40,3 +40,6 @@ This repository uses relative asset paths and can be served from the root of the
 
 Team: David Yang, Nam Ngo, Jun Tao Wang, Eric Che.
 D3.js: Mike Bostock and contributors, ISC license. See vendor/LICENSE-D3.txt.
+
+Live site: https://cookieyang888.github.io/cmip6-warming-explorer/
+Repository: https://github.com/cookieyang888/cmip6-warming-explorer
