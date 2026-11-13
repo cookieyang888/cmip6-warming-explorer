@@ -1,0 +1,7 @@
+xarray
+pandas
+numpy
+dask
+zarr<3
+gcsfs
+cftime
