@@ -32,10 +32,10 @@ function frame(id,domain,x,{height=H,months=false}={}){
  const svg=d3.select(id).append('svg').attr('viewBox',`0 0 ${W} ${height}`).attr('role','img');
  const y=d3.scaleLinear().domain(domain).range([height-M.bottom,M.top]);
  svg.append('g').attr('class','grid').attr('transform',`translate(${M.left},0)`).call(d3.axisLeft(y).ticks(6).tickSize(-(W-M.left-M.right)).tickFormat(''));
- svg.append('g').attr('transform',`translate(${M.left},0)`).call(d3.axisLeft(y).ticks(6).tickFormat(d=>`${d>0?'+':''}${d}°`));
+ svg.append('g').attr('transform',`translate(${M.left},0)`).call(d3.axisLeft(y).ticks(6).tickFormat(d=>`${d>0?'+':''}${d} °C`));
  const axis=d3.axisBottom(x);
  if(months)axis.tickValues(d3.range(1,13)).tickFormat(m=>monthName(m).slice(0,3));
- else axis.tickValues([2015,2030,2045,2060,2075,2090,2100]).tickFormat(d3.format('d'));
+ else axis.tickValues(d3.range(2020,2101,10)).tickFormat(d3.format('d'));
  svg.append('g').attr('transform',`translate(0,${height-M.bottom})`).call(axis);
  svg.append('line').attr('class','zero').attr('x1',M.left).attr('x2',W-M.right).attr('y1',y(0)).attr('y2',y(0));
  return{svg,y};
@@ -43,7 +43,7 @@ function frame(id,domain,x,{height=H,months=false}={}){
 function drawTrend(){
  hideTip();trendX=d3.scaleLinear().domain([2015,2100]).range([M.left,W-M.right]);
  const{svg,y}=frame('#trend',annualDomain,trendX);
- svg.attr('aria-label',`Temperature anomalies near ${state.location}, ${state.view==='annual'?'annual values':'20-year trailing averages'}. Use the numeric year controls to change the selected period.`);
+ svg.attr('aria-label',`Temperature changes near ${state.location}, ${state.view==='annual'?'annual values':'20-year trailing average'}. Use the numeric year controls to change the selected period.`);
  const field=state.view==='annual'?'anomaly_c':'rolling_20yr_anomaly_c';
  for(const s of state.scenarios){
   svg.append('path').datum(activeAnnual(state.location,s)).attr('class','series').attr('stroke',COLORS[s]).attr('stroke-dasharray',DASH[s]).attr('d',d3.line().defined(d=>Number.isFinite(d[field])).x(d=>trendX(d.year)).y(d=>y(d[field])));
@@ -68,32 +68,32 @@ function drawTrend(){
   marker.attr('x1',trendX(year)).attr('x2',trendX(year)).attr('visibility','visible');
   showTip(event,`<strong>${state.location} · ${year}</strong><br>${state.view==='smooth'?'20-year trailing average<br>':''}`+state.scenarios.map(s=>{const d=activeAnnual(state.location,s).find(r=>r.year===year);return`${LABELS[s]}: ${Number.isFinite(d[field])?fmt(d[field])+' °C':'Window incomplete'}`}).join('<br>'));
  }).on('pointerleave',()=>{hideTip();marker.attr('visibility','hidden')}).on('pointerdown',hideTip);
- d3.select('#view-note').text(state.view==='smooth'?'Each point averages the current year and previous 19 years; the first complete window ends in 2034. Linked views still use the exact selected years.':'Annual values retain modeled year-to-year variation. Switch to the 20-year average to inspect longer-term trajectories.');
+ d3.select('#view-note').text(state.view==='smooth'?'Each point averages the current year and previous 19 years; the first complete window ends in 2034. Linked views still use the exact selected years.':'Annual values retain modeled year-to-year variation. Switch to the 20-year trailing average to inspect longer-term trajectories.');
 }
 function drawSeason(){
  const data=state.scenarios.flatMap(s=>seasonal(state.location,s));
  const x=d3.scaleLinear().domain([1,12]).range([M.left,W-M.right]);
  const{svg,y}=frame('#season',seasonDomain,x,{months:true});
- svg.attr('aria-label',`Monthly temperature anomalies near ${state.location}, ${state.range.join(' to ')}. Exact values are also available in the data table.`);
+ svg.attr('aria-label',`Monthly temperature changes near ${state.location}, ${state.range.join(' to ')}. Exact values are also available in the data table.`);
  for(const s of state.scenarios)svg.append('path').datum(data.filter(d=>d.scenario===s)).attr('class','series').attr('stroke',COLORS[s]).attr('stroke-dasharray',DASH[s]).attr('d',d3.line().x(d=>x(d.month)).y(d=>y(d.value)));
  svg.selectAll('circle').data(data).join('circle').attr('cx',d=>x(d.month)).attr('cy',d=>y(d.value)).attr('r',4).attr('fill',d=>COLORS[d.scenario]).attr('stroke','#fffef9').attr('stroke-width',1).attr('tabindex',0).attr('role','img').attr('aria-label',d=>`${LABELS[d.scenario]}, ${monthName(d.month)}: ${fmt(d.value)} degrees Celsius`).on('pointerenter focus',function(event,d){showTip(event,`<strong>${monthName(d.month)} · ${LABELS[d.scenario]}</strong><br>${state.location} · ${state.range.join('–')}<br>${fmt(d.value)} °C vs historical month`,this)}).on('pointerleave blur',hideTip);
  const highest=SCENARIOS.filter(s=>state.scenarios.includes(s)).at(-1);
  const values=data.filter(d=>d.scenario===highest),peak=d3.greatest(values,d=>d.value),lowest=d3.least(values,d=>d.value);
- d3.select('#season-insight').text(`For ${LABELS[highest]} near ${state.location} in ${state.range.join('–')}, the largest monthly change is ${fmt(peak.value)} °C in ${monthName(peak.month)}, compared with ${fmt(lowest.value)} °C in ${monthName(lowest.month)}. This describes the selected simulation and period.`);
+ d3.select('#season-insight').text(`For ${LABELS[highest]} near ${state.location} in ${state.range.join('–')}, the largest monthly change is ${fmt(peak.value)} °C in ${monthName(peak.month)}; the smallest change is ${fmt(lowest.value)} °C in ${monthName(lowest.month)}. This describes the selected simulation and period.`);
 }
 function chooseLocation(location){state.location=location;d3.select('#location').property('value',location);renderAll()}
 function drawComparison(){
  d3.select('#comparison').selectAll('*').remove();const height=285,left=125,right=90;
- const svg=d3.select('#comparison').append('svg').attr('viewBox',`0 0 ${W} ${height}`).attr('role','img').attr('aria-label',`Comparison of mean annual warming across four locations in ${state.range.join(' to ')}.`);
+ const svg=d3.select('#comparison').append('svg').attr('viewBox',`0 0 ${W} ${height}`).attr('role','img').attr('aria-label',`Comparison of mean annual change across four locations in ${state.range.join(' to ')}.`);
  const x=d3.scaleLinear().domain(annualDomain).range([left,W-right]),y=d3.scaleBand().domain(LOCATIONS).range([5,height-35]).padding(.28);
  svg.append('g').attr('class','grid').attr('transform',`translate(0,${height-35})`).call(d3.axisBottom(x).ticks(8).tickSize(-(height-40)).tickFormat(''));
- svg.append('g').attr('transform',`translate(0,${height-35})`).call(d3.axisBottom(x).ticks(8).tickFormat(d=>`${d>0?'+':''}${d}°`));
+ svg.append('g').attr('transform',`translate(0,${height-35})`).call(d3.axisBottom(x).ticks(8).tickFormat(d=>`${d>0?'+':''}${d} °C`));
  svg.append('line').attr('class','zero').attr('x1',x(0)).attr('x2',x(0)).attr('y1',5).attr('y2',height-35);
  for(const location of LOCATIONS){
   const g=svg.append('g').attr('class','compare-row');
   g.append('text').attr('class','compare-label').attr('x',left-15).attr('y',y(location)+y.bandwidth()/2).attr('dy','.35em').attr('text-anchor','end').attr('font-weight',location===state.location?'bold':null).attr('tabindex',0).attr('role','button').attr('aria-label',`Explore ${location}`).text(location===state.location?location+' •':location).on('click',()=>chooseLocation(location)).on('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();chooseLocation(location)}});
   state.scenarios.forEach((s,i)=>{const v=yearMean(location,s),barH=y.bandwidth()/state.scenarios.length;
-   g.append('rect').attr('class','compare-bar').attr('x',x(Math.min(0,v))).attr('y',y(location)+i*barH).attr('width',Math.max(1,Math.abs(x(v)-x(0)))).attr('height',Math.max(3,barH-2)).attr('fill',COLORS[s]).attr('tabindex',0).attr('role','button').attr('aria-label',`Explore ${location}, ${LABELS[s]}, mean warming ${fmt(v)} degrees`).on('click',()=>chooseLocation(location)).on('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();chooseLocation(location)}}).on('pointerenter focus',function(e){showTip(e,`<strong>${location} · ${LABELS[s]}</strong><br>${state.range.join('–')} mean annual change<br>${fmt(v)} °C<br>Click to explore this location`,this)}).on('pointerleave blur',hideTip);
+   g.append('rect').attr('class','compare-bar').attr('x',x(Math.min(0,v))).attr('y',y(location)+i*barH).attr('width',Math.max(1,Math.abs(x(v)-x(0)))).attr('height',Math.max(3,barH-2)).attr('fill',COLORS[s]).attr('tabindex',0).attr('role','button').attr('aria-label',`Explore ${location}, ${LABELS[s]}, mean annual change ${fmt(v)} degrees Celsius`).on('click',()=>chooseLocation(location)).on('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();chooseLocation(location)}}).on('pointerenter focus',function(e){showTip(e,`<strong>${location} · ${LABELS[s]}</strong><br>${state.range.join('–')} mean annual change<br>${fmt(v)} °C<br>Click to explore this location`,this)}).on('pointerleave blur',hideTip);
    g.append('text').attr('x',x(v)+(v>=0?7:-7)).attr('y',y(location)+i*barH+barH/2).attr('dy','.3em').attr('text-anchor',v>=0?'start':'end').attr('font-size',10).attr('fill',COLORS[s]).text(fmt(v));
   });
  }
@@ -103,12 +103,12 @@ function updateTable(){const rows=selectedRows();const root=d3.select('#data-tab
 function syncRange(){const[a,b]=state.range;d3.select('#start').property('value',a);d3.select('#end').property('value',b);d3.select('#period').text(`${a}–${b}`);d3.select('#period-context').text(`${b-a+1} year${b===a?'':'s'} · ${state.location}`);d3.selectAll('[data-period]').classed('active',function(){return this.dataset.period===state.range.join(',')}).attr('aria-pressed',function(){return this.dataset.period===state.range.join(',')?'true':'false'})}
 function updateLinked(){
  syncRange();hideTip();
- d3.select('#status').text(`${state.location} · ${state.range.join('–')} · ${state.scenarios.length} scenario${state.scenarios.length===1?'':'s'} selected. All temperature axes remain fixed when you change the filters.`);
+ d3.select('#status').text(`${state.location} · ${state.range.join('–')} · ${state.scenarios.length} scenario${state.scenarios.length===1?'':'s'} selected. All temperature axes remain fixed when you change the controls.`);
  const grid=activeAnnual(state.location,'ssp126')[0];
  const lon=grid.grid_lon>180?grid.grid_lon-360:grid.grid_lon;
- d3.select('#grid-note').text(`Model grid: ${Math.abs(grid.grid_lat).toFixed(2)}° ${grid.grid_lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}° ${lon>=0?'E':'W'}`);
+ d3.select('#grid-note').text(`Nearest model grid cell: ${Math.abs(grid.grid_lat).toFixed(2)}° ${grid.grid_lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(2)}° ${lon>=0?'E':'W'}`);
  d3.selectAll('.place').text(state.location);
- d3.select('#summary').selectAll('.metric').data(SCENARIOS).join('div').attr('class',s=>'metric'+(state.scenarios.includes(s)?'':' disabled')).style('--scenario',s=>COLORS[s]).html(s=>`<span class="metric-label">${LABELS[s]}</span><span class="number">${state.scenarios.includes(s)?fmt(yearMean(state.location,s))+'°':'—'}</span><p>${state.scenarios.includes(s)?'Mean annual change (°C)':'Scenario hidden'}</p>`);
+ d3.select('#summary').selectAll('.metric').data(SCENARIOS).join('div').attr('class',s=>'metric'+(state.scenarios.includes(s)?'':' disabled')).style('--scenario',s=>COLORS[s]).html(s=>`<span class="metric-label">${LABELS[s]}</span><span class="number">${state.scenarios.includes(s)?fmt(yearMean(state.location,s))+' °C':'—'}</span><p>${state.scenarios.includes(s)?'Mean annual change (°C)':'Scenario hidden'}</p>`);
  drawSeason();drawComparison();if(document.querySelector('.data-details').open)updateTable();
 }
 function renderAll(){drawTrend();updateLinked()}
